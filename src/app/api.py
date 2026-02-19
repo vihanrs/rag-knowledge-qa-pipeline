@@ -66,6 +66,9 @@ async def qa_endpoint(payload: QuestionRequest) -> QAResponse:
     return QAResponse(
         answer=result.get("answer", ""),
         context=result.get("context", ""),
+        plan=result.get("plan"),
+        sub_questions=result.get("sub_questions"),
+        retrieval_traces=result.get("retrieval_traces"),
     )
 
 

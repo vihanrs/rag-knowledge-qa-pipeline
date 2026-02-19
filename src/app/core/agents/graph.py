@@ -6,7 +6,7 @@ from typing import Any, Dict
 from langgraph.constants import END, START
 from langgraph.graph import StateGraph
 
-from .agents import retrieval_node, summarization_node, verification_node
+from .agents import planning_node, retrieval_node, summarization_node, verification_node
 from .state import QAState
 
 
@@ -14,9 +14,10 @@ def create_qa_graph() -> Any:
     """Create and compile the linear multi-agent QA graph.
 
     The graph executes in order:
-    1. Retrieval Agent: gathers context from vector store
-    2. Summarization Agent: generates draft answer from context
-    3. Verification Agent: verifies and corrects the answer
+    1. Planning Agent: decomposes the question into a plan + sub-questions
+    2. Retrieval Agent: gathers context from vector store using the plan
+    3. Summarization Agent: generates draft answer from context
+    4. Verification Agent: verifies and corrects the answer
 
     Returns:
         Compiled graph ready for execution.
@@ -24,12 +25,14 @@ def create_qa_graph() -> Any:
     builder = StateGraph(QAState)
 
     # Add nodes for each agent
+    builder.add_node("planning", planning_node)
     builder.add_node("retrieval", retrieval_node)
     builder.add_node("summarization", summarization_node)
     builder.add_node("verification", verification_node)
 
-    # Define linear flow: START -> retrieval -> summarization -> verification -> END
-    builder.add_edge(START, "retrieval")
+    # Define linear flow: START -> planning -> retrieval -> summarization -> verification -> END
+    builder.add_edge(START, "planning")
+    builder.add_edge("planning", "retrieval")
     builder.add_edge("retrieval", "summarization")
     builder.add_edge("summarization", "verification")
     builder.add_edge("verification", END)
@@ -64,6 +67,10 @@ def run_qa_flow(question: str) -> Dict[str, Any]:
 
     initial_state: QAState = {
         "question": question,
+        "plan": None,
+        "sub_questions": None,
+        "retrieval_traces": None,
+        "raw_context_blocks": None,
         "context": None,
         "draft_answer": None,
         "answer": None,
