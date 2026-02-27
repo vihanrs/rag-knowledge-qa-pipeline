@@ -2,6 +2,8 @@
 
 A multi-agent Retrieval-Augmented Generation (RAG) system built with LangChain, LangGraph, Pinecone, and FastAPI. The pipeline decomposes complex questions into sub-queries, retrieves relevant document chunks from a vector store, and produces verified answers through a chain of specialized agents.
 
+**Frontend Repository:** [vihanrs/rag-knowledge-qa-pipeline-FE](https://github.com/vihanrs/rag-knowledge-qa-pipeline-FE)
+
 ---
 
 ## Architecture
