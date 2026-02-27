@@ -1,4 +1,18 @@
+from typing import Any
+
 from pydantic import BaseModel
+
+
+class VercelChatRequest(BaseModel):
+    """Request body sent by Vercel AI SDK useChat hook to /qa/stream.
+
+    Uses raw dicts for messages so the schema accepts both the legacy
+    {role, content: str} format and the AI SDK v5 UI message format
+    {id, role, parts: [{type, text}]}.
+    """
+
+    id: str | None = None
+    messages: list[dict[str, Any]]
 
 
 class QuestionRequest(BaseModel):

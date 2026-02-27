@@ -242,6 +242,8 @@ Please verify and correct the draft answer, removing any unsupported claims."""
     messages = result.get("messages", [])
     answer = _extract_last_ai_content(messages)
 
+    existing_messages = state.get("messages") or []
     return {
         "answer": answer,
+        "messages": existing_messages + [AIMessage(content=answer)],
     }

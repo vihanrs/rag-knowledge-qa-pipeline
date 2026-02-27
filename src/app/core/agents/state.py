@@ -2,6 +2,8 @@
 
 from typing import TypedDict
 
+from langchain_core.messages import BaseMessage
+
 
 class QAState(TypedDict):
     """State schema for the linear multi-agent QA flow.
@@ -21,3 +23,4 @@ class QAState(TypedDict):
     context: str | None
     draft_answer: str | None
     answer: str | None
+    messages: list[BaseMessage] | None  # Vercel streaming: verification node writes final AIMessage here

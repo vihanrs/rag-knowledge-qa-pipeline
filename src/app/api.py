@@ -1,11 +1,15 @@
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 
-from .models import QuestionRequest, QAResponse
+from .models import QuestionRequest, QAResponse, VercelChatRequest
 from .services.qa_service import answer_question
 from .services.indexing_service import index_pdf_file
+from .core.agents.graph import run_qa_stream
+from .utils.http_headers import patch_vercel_headers
+from .utils.message_transformer import extract_user_message
 
 
 app = FastAPI(
@@ -16,6 +20,13 @@ app = FastAPI(
         "will be wired to a multi-agent RAG pipeline in later user stories."
     ),
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -70,6 +81,31 @@ async def qa_endpoint(payload: QuestionRequest) -> QAResponse:
         sub_questions=result.get("sub_questions"),
         retrieval_traces=result.get("retrieval_traces"),
     )
+
+
+@app.post("/qa/stream")
+async def qa_stream_endpoint(payload: VercelChatRequest) -> StreamingResponse:
+    """Streaming QA endpoint for Vercel AI SDK frontend (useChat hook).
+
+    Accepts the Vercel AI SDK chat message format, extracts the last user message,
+    and streams SSE events in Vercel Data Stream Protocol v1:
+    - data-plan: planning agent output (pops in when planning completes)
+    - data-retrieval_traces: retrieval summary (pops in when retrieval completes)
+    - data-draft_answer: summarization output (pops in when summarization completes)
+    - text-delta chunks: final verified answer streams character by character
+    """
+    question = extract_user_message(payload.messages).strip()
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="`question` must be a non-empty string.",
+        )
+
+    response = StreamingResponse(
+        run_qa_stream(question),
+        media_type="text/event-stream",
+    )
+    return patch_vercel_headers(response)
 
 
 @app.post("/index-pdf", status_code=status.HTTP_200_OK)
